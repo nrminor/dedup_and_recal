@@ -8,6 +8,8 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = "^3.11"
 ruff = "^0.1.5"
+pdoc = "^14.1.0"
+result = "^0.14.0"
 
 
 [build-system]

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """ 
-The module `dedup_and_recal.py` is meant to combine redudant
+The module `dedup_and_recal.py` is meant to combine redundant
 assembly contigs with identical consensus sequences and combine them.
 It also has the ability to parse a read support/depth value at the end
 of the FASTA defline and include a combined read support in any sequences
