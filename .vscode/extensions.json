@@ -1,0 +1,23 @@
+{
+    "recommendations": [
+        "ms-python.autopep8",
+        "ms-python.black-formatter",
+        "ms-azuretools.vscode-docker",
+        "tamasfe.even-better-toml",
+        "github.vscode-github-actions",
+        "codezombiech.gitignore",
+        "ms-python.isort",
+        "ms-toolsai.jupyter",
+        "ms-python.mypy-type-checker",
+        "ms-python.python",
+        "ms-python.pylint",
+        "donjayamanne.python-environment-manager",
+        "ms-python.vscode-pylance",
+        "kevinrose.vsc-python-indent",
+        "quarto.quarto",
+        "mechatroner.rainbow-csv",
+        "tomoki1207.pdf",
+        "redhat.vscode-yaml",
+        "usernamehw.errorlens"
+    ]
+}
