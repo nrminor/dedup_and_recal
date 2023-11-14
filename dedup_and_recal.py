@@ -171,7 +171,7 @@ def deduplicate_and_recalibrate(
         sequence = seqs[i].sequence
         next_sequence = seqs[i + 1].sequence
 
-        if sequence == next_sequence:
+        if sequence == next_sequence or next_sequence in sequence:
             support = seqs[i].read_support
             next_support = seqs[i + 1].read_support
             new_support = support + next_support
