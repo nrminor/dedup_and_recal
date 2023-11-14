@@ -11,7 +11,8 @@ To run the module, use this as your template:
 ```
 python3 dedup_and_recal.py \
 --fasta /path/to/fasta/file.fasta \
---output "desired_output_prefix"
+--output "desired_output_prefix" \
+--split_char "_"
 ```
 """
 
@@ -32,7 +33,7 @@ class SeqWithSupport:
     read_support: Optional[int]
 
 
-def parse_command_line_args() -> Tuple[str, str]:
+def parse_command_line_args() -> Tuple[str, str, str]:
     """
     Parse two possible arguments provided with keyword flags in the command line.
     """
@@ -52,9 +53,16 @@ def parse_command_line_args() -> Tuple[str, str]:
         default="deduplicated_contigs",
         help="Prefix for output FASTA file.",
     )
+    parser.add_argument(
+        "--split_char",
+        "-c",
+        type=str,
+        required=True,
+        help="The character to use to split the FASTA defline. Usually '_' or ' '.",
+    )
     args = parser.parse_args()
 
-    return args.fasta, args.output
+    return args.fasta, args.output, args.split_char
 
 
 def _try_parse_int(value: str) -> Optional[int]:
@@ -69,7 +77,9 @@ def _try_parse_int(value: str) -> Optional[int]:
         return None
 
 
-def generate_seq_dict(input_fasta: list[str]) -> Dict[str, SeqWithSupport]:
+def generate_seq_dict(
+    input_fasta: list[str], split_char: str
+) -> Dict[str, SeqWithSupport]:
     """
     Generate a dictionary that will structure FASTA deflines as its keys and use the
     `SeqWithSupport` dataclass to store sequences and read supports as its values
@@ -77,7 +87,7 @@ def generate_seq_dict(input_fasta: list[str]) -> Dict[str, SeqWithSupport]:
 
     deflines = [line for line in input_fasta if line.startswith(">")]
     supports = [
-        _try_parse_int(line.split("_")[-1])
+        _try_parse_int(line.split(split_char)[-1])
         for line in input_fasta
         if line.startswith(">")
     ]
@@ -110,7 +120,7 @@ def generate_seq_dict(input_fasta: list[str]) -> Dict[str, SeqWithSupport]:
     return seq_dict
 
 
-def _make_new_defline(old_defline: str, support: Optional[int]) -> str:
+def _make_new_defline(old_defline: str, support: Optional[int], split_char: str) -> str:
     """
     Helper function that makes a new defline with updated read support.
     """
@@ -118,7 +128,9 @@ def _make_new_defline(old_defline: str, support: Optional[int]) -> str:
     if support is None:
         return old_defline
 
-    new_defline_list = old_defline.split("_")[:-1] + ["combined"] + [str(support)]
+    new_defline_list = (
+        old_defline.split(split_char)[:-1] + ["combined"] + [str(support)]
+    )
     new_defline = "_".join(new_defline_list)
 
     return new_defline
@@ -142,7 +154,7 @@ def _write_wrapped(output_file: TextIO, sequence: str, wrap_at: int = 80) -> Non
 
 
 def deduplicate_and_recalibrate(
-    seq_struct: Dict[str, SeqWithSupport], output_fasta: TextIO
+    seq_struct: Dict[str, SeqWithSupport], output_fasta: TextIO, split_char: str
 ) -> None:
     """
     Function `deduplicate_and_recalibrate()` combines any contigs with identical sequences
@@ -163,7 +175,7 @@ def deduplicate_and_recalibrate(
             support = seqs[i].read_support
             next_support = seqs[i + 1].read_support
             new_support = support + next_support
-            new_defline = _make_new_defline(deflines[i], new_support)
+            new_defline = _make_new_defline(deflines[i], new_support, split_char)
             output_fasta.write(f"{new_defline}\n")
             _write_wrapped(output_fasta, sequence)
             i += 2
@@ -178,14 +190,14 @@ def main() -> None:
     Main coordinates the flow of data through the above-defined functions.
     """
 
-    input_fasta, output_prefix = parse_command_line_args()
+    input_fasta, output_prefix, split_char = parse_command_line_args()
 
     with open(input_fasta, "r", encoding="utf-8") as old_file, open(
         f"{output_prefix}.fasta", "w", encoding="utf-8"
     ) as new_fasta:
         old_fasta = old_file.readlines()
-        seq_dict = generate_seq_dict(old_fasta)
-        deduplicate_and_recalibrate(seq_dict, new_fasta)
+        seq_dict = generate_seq_dict(old_fasta, split_char)
+        deduplicate_and_recalibrate(seq_dict, new_fasta, split_char)
 
 
 if __name__ == "__main__":
