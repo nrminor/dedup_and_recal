@@ -78,7 +78,7 @@ def _try_parse_int(value: str) -> Optional[int]:
 
 
 def generate_seq_dict(
-    input_fasta: list[str], split_char: str
+    input_fasta: List[str], split_char: str
 ) -> Dict[str, SeqWithSupport]:
     """
     Generate a dictionary that will structure FASTA deflines as its keys and use the
