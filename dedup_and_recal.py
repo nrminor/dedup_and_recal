@@ -153,6 +153,21 @@ def _write_wrapped(output_file: TextIO, sequence: str, wrap_at: int = 80) -> Non
         output_file.write("".join(buffer) + "\n")
 
 
+def _combine_read_support(
+    support1: Optional[int], support2: Optional[int]
+) -> Optional[int]:
+    """
+    Combine two read support values, handling None values.
+    """
+    if support1 is None and support2 is None:
+        return None
+    if support1 is None:
+        return support2
+    if support2 is None:
+        return support1
+    return support1 + support2
+
+
 def deduplicate_and_recalibrate(
     seq_struct: Dict[str, SeqWithSupport], output_fasta: TextIO, split_char: str
 ) -> None:
@@ -160,37 +175,41 @@ def deduplicate_and_recalibrate(
     Function `deduplicate_and_recalibrate()` combines any contigs with identical sequences
     and recalibrates their previously separate read support by adding them.
     """
-    # establish a bound for looping
-    bound = len(seq_struct)
+    while seq_struct:
+        first_defline, first_seq = next(iter(seq_struct.items()))
+        rest_seq_struct = {k: v for k, v in seq_struct.items() if k != first_defline}
 
-    # unpack the dictionary into indexable lists
-    deflines, seqs = zip(*seq_struct.items())
+        duplicate_found = False
 
-    i = 0
-    while i < bound - 1:
-        sequence = seqs[i].sequence
-        next_sequence = seqs[i + 1].sequence
+        for defline, seq in rest_seq_struct.items():
+            if (
+                first_seq.sequence == seq.sequence
+                or seq.sequence in first_seq.sequence
+                or first_seq.sequence in seq.sequence
+            ):
+                keeper = (
+                    first_seq.sequence
+                    if len(first_seq.sequence) > len(seq.sequence)
+                    else seq.sequence
+                )
+                new_support = _combine_read_support(
+                    first_seq.read_support, seq.read_support
+                )
+                new_defline = _make_new_defline(first_defline, new_support, split_char)
+                output_fasta.write(f"{new_defline}")
+                _write_wrapped(output_fasta, keeper)
 
-        if (
-            sequence == next_sequence
-            or next_sequence in sequence
-            or sequence in next_sequence
-        ):
-            if len(sequence) > len(next_sequence):
-                keeper = sequence
-            else:
-                keeper = next_sequence
-            support = seqs[i].read_support
-            next_support = seqs[i + 1].read_support
-            new_support = support + next_support
-            new_defline = _make_new_defline(deflines[i], new_support, split_char)
-            output_fasta.write(f"{new_defline}\n")
-            _write_wrapped(output_fasta, keeper)
-            i += 2
-        else:
-            output_fasta.write(f"{deflines[i]}")
-            _write_wrapped(output_fasta, sequence)
-            i += 1
+                # Remove the matched item and update the seq_struct for next iteration
+                del rest_seq_struct[defline]
+                duplicate_found = True
+                break
+
+        if not duplicate_found:
+            output_fasta.write(f"{first_defline}")
+            _write_wrapped(output_fasta, first_seq.sequence)
+
+        # Update seq_struct for the next iteration of the while loop
+        seq_struct = rest_seq_struct
 
 
 def main() -> None:
