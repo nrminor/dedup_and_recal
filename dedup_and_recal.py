@@ -171,7 +171,11 @@ def deduplicate_and_recalibrate(
         sequence = seqs[i].sequence
         next_sequence = seqs[i + 1].sequence
 
-        if sequence == next_sequence or next_sequence in sequence or sequence in next_sequence:
+        if (
+            sequence == next_sequence
+            or next_sequence in sequence
+            or sequence in next_sequence
+        ):
             if len(sequence) > len(next_sequence):
                 keeper = sequence
             else:
