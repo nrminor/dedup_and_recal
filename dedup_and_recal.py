@@ -171,13 +171,17 @@ def deduplicate_and_recalibrate(
         sequence = seqs[i].sequence
         next_sequence = seqs[i + 1].sequence
 
-        if sequence == next_sequence or next_sequence in sequence:
+        if sequence == next_sequence or next_sequence in sequence or sequence in next_sequence:
+            if len(sequence) > len(next_sequence):
+                keeper = sequence
+            else:
+                keeper = next_sequence
             support = seqs[i].read_support
             next_support = seqs[i + 1].read_support
             new_support = support + next_support
             new_defline = _make_new_defline(deflines[i], new_support, split_char)
             output_fasta.write(f"{new_defline}\n")
-            _write_wrapped(output_fasta, sequence)
+            _write_wrapped(output_fasta, keeper)
             i += 2
         else:
             output_fasta.write(f"{deflines[i]}")
