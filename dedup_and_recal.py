@@ -33,7 +33,7 @@ class SeqWithSupport:
     read_support: Optional[int]
 
 
-def parse_command_line_args() -> Tuple[str, str, str]:
+def parse_command_line_args() -> Tuple[str, str, str, int]:
     """
     Parse two possible arguments provided with keyword flags in the command line.
     """
@@ -60,9 +60,17 @@ def parse_command_line_args() -> Tuple[str, str, str]:
         required=True,
         help="The character to use to split the FASTA defline. Usually '_' or ' '.",
     )
+    parser.add_argument(
+        "--min_depth",
+        "-m",
+        type=int,
+        required=False,
+        default=0,
+        help="Optional minimum depth required for retained contigs.",
+    )
     args = parser.parse_args()
 
-    return args.fasta, args.output, args.split_char
+    return args.fasta, args.output, args.split_char, args.min_depth
 
 
 def _try_parse_int(value: str) -> Optional[int]:
@@ -169,7 +177,10 @@ def _combine_read_support(
 
 
 def deduplicate_and_recalibrate(
-    seq_struct: Dict[str, SeqWithSupport], output_fasta: TextIO, split_char: str
+    seq_struct: Dict[str, SeqWithSupport],
+    output_fasta: TextIO,
+    split_char: str,
+    min_depth: int,
 ) -> None:
     """
     Function `deduplicate_and_recalibrate()` combines any contigs with identical sequences
@@ -195,9 +206,18 @@ def deduplicate_and_recalibrate(
                 new_support = _combine_read_support(
                     first_seq.read_support, seq.read_support
                 )
-                new_defline = _make_new_defline(first_defline, new_support, split_char)
-                output_fasta.write(f"{new_defline}")
-                _write_wrapped(output_fasta, keeper)
+                if new_support and new_support > min_depth:
+                    new_defline = _make_new_defline(
+                        first_defline, new_support, split_char
+                    )
+                    output_fasta.write(f"{new_defline}")
+                    _write_wrapped(output_fasta, keeper)
+                elif not new_support:
+                    new_defline = _make_new_defline(
+                        first_defline, new_support, split_char
+                    )
+                    output_fasta.write(f"{new_defline}")
+                    _write_wrapped(output_fasta, keeper)
 
                 # Remove the matched item and update the seq_struct for next iteration
                 del rest_seq_struct[defline]
@@ -205,8 +225,12 @@ def deduplicate_and_recalibrate(
                 break
 
         if not duplicate_found:
-            output_fasta.write(f"{first_defline}")
-            _write_wrapped(output_fasta, first_seq.sequence)
+            if first_seq.read_support and first_seq.read_support > min_depth:
+                output_fasta.write(f"{first_defline}")
+                _write_wrapped(output_fasta, first_seq.sequence)
+            elif not first_seq.read_support:
+                output_fasta.write(f"{first_defline}")
+                _write_wrapped(output_fasta, first_seq.sequence)
 
         # Update seq_struct for the next iteration of the while loop
         seq_struct = rest_seq_struct
@@ -217,14 +241,14 @@ def main() -> None:
     Main coordinates the flow of data through the above-defined functions.
     """
 
-    input_fasta, output_prefix, split_char = parse_command_line_args()
+    input_fasta, output_prefix, split_char, min_depth = parse_command_line_args()
 
     with open(input_fasta, "r", encoding="utf-8") as old_file, open(
         f"{output_prefix}.fasta", "w", encoding="utf-8"
     ) as new_fasta:
         old_fasta = old_file.readlines()
         seq_dict = generate_seq_dict(old_fasta, split_char)
-        deduplicate_and_recalibrate(seq_dict, new_fasta, split_char)
+        deduplicate_and_recalibrate(seq_dict, new_fasta, split_char, min_depth)
 
 
 if __name__ == "__main__":
