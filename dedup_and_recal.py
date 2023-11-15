@@ -206,7 +206,7 @@ def deduplicate_and_recalibrate(
                 new_support = _combine_read_support(
                     first_seq.read_support, seq.read_support
                 )
-                if new_support and new_support > min_depth:
+                if new_support and new_support >= min_depth:
                     new_defline = _make_new_defline(
                         first_defline, new_support, split_char
                     )
@@ -225,7 +225,7 @@ def deduplicate_and_recalibrate(
                 break
 
         if not duplicate_found:
-            if first_seq.read_support and first_seq.read_support > min_depth:
+            if first_seq.read_support and first_seq.read_support >= min_depth:
                 output_fasta.write(f"{first_defline}")
                 _write_wrapped(output_fasta, first_seq.sequence)
             elif not first_seq.read_support:
